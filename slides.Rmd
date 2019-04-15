@@ -44,6 +44,12 @@ We will focus on gene-level differential expression.
 - The F1000 Research Bioconductor gateway [https://f1000research.com/gateways/bioconductor](f1000research.com/gateways/bioconductor)
 -  [https://support.bioconductor.org](support.bioconductor.org)
 
+## Where to find me
+
+- Istituto per le Applicazioni del Calcolo "M. Picone" - Consiglio Nazionale delle Ricerche, via P. Castellino 111, Napoli
+- email: d.righelli@na.iac.cnr.it
+- github: https:://github.com/drighelli
+
 ## From RNA to gene-level read counts
 
 \centering

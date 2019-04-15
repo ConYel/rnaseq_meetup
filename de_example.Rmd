@@ -4,17 +4,19 @@ author: "Dario Righelli"
 date: "17/04/2018"
 output: BiocStyle::html_document
 bibliography: biblio.bib
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, cache=TRUE)
 ```
 
 # The data
 
 We will use the data from [@peixoto2015data].
 The gene-level read counts are available on [Github](https://github.com/drisso/peixoto2015_tutorial).
-To be faster, I already put a copy of this repository in our repoitory.
+To be faster, I already put a copy of this repository in our repository.
 
 Briefly, the dataset consists of 5 biological replicates per three conditions: controls, fear-condition (memory formation), and memory retrieval.
 
@@ -31,6 +33,7 @@ library(EDASeq)
 library(DESeq2)
 library(RUVSeq)
 library(edgeR)
+library(NOISeq)
 ```
 
 # Exploratory Data Analysis
@@ -40,15 +43,55 @@ After reading the counts and the positive and negative control genes in R, we fi
 ```{r readFC}
 data_dir <- "./peixoto2015_tutorial/Peixoto_Input_for_Additional_file_1/"
 fc <- read.table(paste0(data_dir, "Peixoto_CC_FC_RT.txt"), row.names=1, header=TRUE)
+
 negControls <- read.table(paste0(data_dir, "Peixoto_NegativeControls.txt"), sep='\t', header=TRUE, as.is=TRUE)
+
 positive <- read.table(paste0(data_dir, "Peixoto_positive_controls.txt"), as.is=TRUE, sep='\t', header=TRUE)
 
 x <- as.factor(rep(c("CC", "FC", "RT"), each=5))
 names(x) <- colnames(fc)
 
+cat("Number of starting features: ", dim(fc)[1], "\n")
+```
+
+# Filtering
+
+Some of the quantified features (genes) could be very low expressed (presenting values close to 0).
+This can affect our analysis, in particular in the detection of differentially expressed genes.
+In order to avoid this bias, we filter out these genes.
+
+The filtering can be made with different approaches:
+
+* classical one: filtering out all those genes with expression lesser than a threshold (5).
+* statistical approach: using an hipothesis test to detect only the significative ones
+    + The NOISeq package provides three different statistical tests through the *filtered.data* function.
+        * CPM: removes those features that have an average expression per condition less than cpm value and a coefficient of variation per condition higher than cv.cutoff (in percentage) in all the conditions.
+        * Wilcoxon: performs a Wilcoxon test per condition and feature where in the null hypothesis the median expression is 0 and in the alternative the median is higher than 0.
+        * Proportion: performs a proportion test on the counts per condition and feature, where null hypothesis is that the feature relative expression (count proportion) is equal to cpm/10^6 and higher than cpm/10^6 for the alternative.
+
+```{r}
+
 filter <- apply(fc, 1, function(x) length(x[which(x>10)])>5)
 filtered <- as.matrix(fc)[filter,]
+cat("Classical approach filtered features: ", (dim(fc)[1]-dim(filtered)[1]), "\n")
 
+cpmfiltered <- NOISeq::filtered.data(fc, factor=x, norm=FALSE, method=1, cv.cutoff=100, cpm=1)
+cat("CPM approach filtered features: ", (dim(fc)[1]-dim(cpmfiltered)[1]), "\n")
+
+wilfiltered <- NOISeq::filtered.data(fc, factor=x, norm=FALSE, method=2, cv.cutoff=100, cpm=1)
+cat("Wilcoxon approach filtered features: ", (dim(fc)[1]-dim(wilfiltered)[1]), "\n")
+
+propfiltered <- NOISeq::filtered.data(fc, factor=x, norm=FALSE, method=3, cv.cutoff=100, cpm=1)
+cat("Proportion approach filtered features: ", (dim(fc)[1]-dim(propfiltered)[1]), "\n")
+
+```
+
+We are not interested in which is the best one here, so we choose the classical one.
+When you perform a real analysis the best approach is to use the one which is filtering not too much and not too few genes.
+
+Now we store the filtered-in genes also for the negative and positive controls.
+
+```{r}
 negCon <- intersect(negControls[,2], rownames(filtered))
 FCup <- intersect(positive[positive[,3]=="UP",1], rownames(filtered))
 FCdown <- intersect(positive[positive[,3]=="DOWN",1], rownames(filtered))
@@ -59,7 +102,21 @@ colors <- brewer.pal(9, "Set1")
 colLib <- colors[x]
 ``` 
 
-The *betweenLaneNormalization* function of *EDASeq* implements UQ normalization. We can then use the *plotRLE* and *plotPCA* functions of *EDASeq* to explore the normalized data.
+## Normalization
+In order to better compare the differences between the conditions, we need to normalize the data.
+Multiple approaches are available for the normalization.
+Several packages allow to normalize the data:
+
+* EDASeq package the betweenLaneNormalization function implements:
+    + Upper Quartile: a normalization based on the third quartile (75% of distribution) 
+    + Median: a normalization based on the median of the distribution.
+* there are some others implementing the same normalizations or their owns.
+
+There is no best normalization, it all depends on the dataset and on the final results.
+    
+By aid of *EDASeq* package, we can also use the *plotRLE* and *plotPCA* functions to explore the normalized data.
+
+### Upper quartile
 
 ```{r uq}
 uq <- betweenLaneNormalization(filtered, which="upper")
@@ -82,12 +139,14 @@ names(x) <- colnames(filtered)
 colLib <- colors[x]
 ```
 
+
 ```{r uq2}
 uq <- betweenLaneNormalization(filtered, which="upper")
 
 plotRLE(uq, col=colLib, outline=FALSE, las=3, ylab="Relative Log Expression", cex.axis=1, cex.lab=1)
 plotPCA(uq, col=colLib, cex=1, cex.axis=1, cex.lab=1)
 ``` 
+
 
 # Differential expression with DESeq2
 
