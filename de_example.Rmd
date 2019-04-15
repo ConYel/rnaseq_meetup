@@ -1,7 +1,7 @@
 ---
 title: "An example of RNA-seq differential expression analysis"
-author: "Davide Risso"
-date: "10/27/2017"
+author: "Dario Righelli"
+date: "17/04/2018"
 output: BiocStyle::html_document
 bibliography: biblio.bib
 ---
@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
 We will use the data from [@peixoto2015data].
 The gene-level read counts are available on [Github](https://github.com/drisso/peixoto2015_tutorial).
+To be faster, I already put a copy of this repository in our repoitory.
 
 Briefly, the dataset consists of 5 biological replicates per three conditions: controls, fear-condition (memory formation), and memory retrieval.
 
