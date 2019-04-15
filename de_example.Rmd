@@ -2,8 +2,9 @@
 title: "An example of RNA-seq differential expression analysis"
 author: "Dario Righelli"
 date: "17/04/2018"
-output: BiocStyle::html_document
-bibliography: biblio.bib
+output: 
+    BiocStyle::html_document:
+        code_folding: hide
 editor_options: 
   chunk_output_type: console
 ---
@@ -35,6 +36,22 @@ library(RUVSeq)
 library(edgeR)
 library(NOISeq)
 ```
+
+# Preliminary fundamental steps
+
+Before starting this analysis the raw data (**FASTQ**) have been already independently mapped to the reference genome (mouse) with the **STAR** software outside R.
+Producing, in such a way, one BAM file for each sample.
+The mapping process consists in assigning the sequence reads to specific regions of the genome. 
+The precision of the mapping step depends on the software used and on the parameters used.
+NB It is a time demanding step.
+
+Then, in order to quantify the features (genes), the BAM files have been processed together with a **GTF** file to assign the mapped reads to specific features.
+As many reads (for each sample) are assigned to a gene as highly is expressed that gene (in that sample).
+This process can be performed in R by aid of **featureCounts** function of **RSubread** package.
+The final result of this process is a matrix with the genes on the rows and the samples on the columns.
+Each cell c[i,j] of the matrix contains the number of reads assigned to  i-th feature in the j-th sample.
+
+Today, we'll work starting with this matrix (the count matrix).
 
 # Exploratory Data Analysis
 
@@ -73,15 +90,13 @@ The filtering can be made with different approaches:
 
 filter <- apply(fc, 1, function(x) length(x[which(x>10)])>5)
 filtered <- as.matrix(fc)[filter,]
-cat("Classical approach filtered features: ", (dim(fc)[1]-dim(filtered)[1]), "\n")
-
 cpmfiltered <- NOISeq::filtered.data(fc, factor=x, norm=FALSE, method=1, cv.cutoff=100, cpm=1)
-cat("CPM approach filtered features: ", (dim(fc)[1]-dim(cpmfiltered)[1]), "\n")
-
 wilfiltered <- NOISeq::filtered.data(fc, factor=x, norm=FALSE, method=2, cv.cutoff=100, cpm=1)
-cat("Wilcoxon approach filtered features: ", (dim(fc)[1]-dim(wilfiltered)[1]), "\n")
-
 propfiltered <- NOISeq::filtered.data(fc, factor=x, norm=FALSE, method=3, cv.cutoff=100, cpm=1)
+
+cat("Classical approach filtered features: ", (dim(fc)[1]-dim(filtered)[1]), "\n")
+cat("CPM approach filtered features: ", (dim(fc)[1]-dim(cpmfiltered)[1]), "\n")
+cat("Wilcoxon approach filtered features: ", (dim(fc)[1]-dim(wilfiltered)[1]), "\n")
 cat("Proportion approach filtered features: ", (dim(fc)[1]-dim(propfiltered)[1]), "\n")
 
 ```
@@ -102,7 +117,7 @@ colors <- brewer.pal(9, "Set1")
 colLib <- colors[x]
 ``` 
 
-## Normalization
+# Normalization
 In order to better compare the differences between the conditions, we need to normalize the data.
 Multiple approaches are available for the normalization.
 Several packages allow to normalize the data:
@@ -116,7 +131,7 @@ There is no best normalization, it all depends on the dataset and on the final r
     
 By aid of *EDASeq* package, we can also use the *plotRLE* and *plotPCA* functions to explore the normalized data.
 
-### Upper quartile
+## Upper quartile
 
 ```{r uq}
 uq <- betweenLaneNormalization(filtered, which="upper")
@@ -124,6 +139,7 @@ uq <- betweenLaneNormalization(filtered, which="upper")
 plotRLE(uq, col=colLib, outline=FALSE, las=3, ylab="Relative Log Expression", cex.axis=1, cex.lab=1)
 plotPCA(uq, col=colLib, cex=1, cex.axis=1, cex.lab=1)
 ``` 
+
 
 From these plots we notice that the data points denoted with "3" and "8" are somewhat different from the rest of the samples.
 
@@ -175,13 +191,14 @@ dds <- estimateDispersions(dds)
 dds <- nbinomWaldTest(dds)
 ```
 
-To understand how the dispersion is estimated by `DESeq2`, we can plot it against the mean.
+<!-- To understand how the dispersion is estimated by `DESeq2`, we can plot it against the mean. -->
 
-```{r disp}
-plotDispEsts(dds)
-```
+<!-- ```{r disp} -->
+<!-- plotDispEsts(dds) -->
+<!-- ``` -->
 
-The genewise estimates of the dispersion are shrunk towards the fitted line. Some gene-wise estimates are flagged as outliers and not shrunk towards the fitted value.
+<!-- The genewise estimates of the dispersion are shrunk towards the fitted line.  -->
+<!-- Some gene-wise estimates are flagged as outliers and not shrunk towards the fitted value. -->
 
 Let's explore the results.
 
@@ -214,7 +231,8 @@ hist(res2$pvalue)
 
 This is a good distribution of the p-values. We expect the majority of the genes to be non-differentially expressed, hence leading to a uniform distribution of the p-value and a small portion of genes to be differentially expressed, leading to p-values close to zero.
 
-Another very useful plot is the volcano plot. As far as I know, `DESeq2` does not have an automatic function for that, but it is easy to do it "by hand."
+Another very useful plot is the volcano plot. 
+As far as I know, `DESeq2` does not have an automatic function for that, but it is easy to do it "by hand".
 
 ```{r}
 plot(res2$log2FoldChange, -log10(res2$pvalue), 
@@ -271,8 +289,9 @@ points(res2_all[pos, "log2FoldChange"],
 
 ## Accounting for unwanted variation
 
-Sometimes filtering out "bad" samples is not feasible or undesirable. In such cases, we can try and capture the unwanted 
-variation and include it in the model. This is the approach used in the `RUVSeq` package.
+Sometimes filtering out "bad" samples is not feasible or undesirable. 
+In such cases, we can try and capture the unwanted variation and include it in the model. 
+This is the approach used in the `RUVSeq` package.
 
 ```{r ruvseq}
 uq <- betweenLaneNormalization(filtered_orig, which="upper")
@@ -300,7 +319,8 @@ summary(res2_ruv)
 hist(res2_ruv$pvalue)
 ```
 
-This is not a good distribution of the p-values. Usually a symptom that the data are affected by batch effects or other unwanted variation.
+This is a better distribution of the p-values. 
+Demonstrating that we have been able to remove the batch effects/unwanted variations.
 
 ```{r}
 plot(res2_ruv$log2FoldChange, -log10(res2_ruv$pvalue), 
@@ -331,26 +351,27 @@ design <- model.matrix(~x_orig + ruv$W)
 y <- estimateDisp(y, design)
 ```
 
-`estimateDisp` in this case consist of three steps: it first estimates a common dispersion parameter, then a "trend" capturing the relation between dispersion and mean and finally a "tagwise" dispersion parameter shrinked towards the common trend.
+<!-- `estimateDisp` in this case consist of three steps: it first estimates a common dispersion parameter, then a "trend" capturing the relation between dispersion and mean and finally a "tagwise" dispersion parameter shrinked towards the common trend. -->
 
-In order to understand how this work, we can plot the mean-variance plot.
+<!-- In order to understand how this work, we can plot the mean-variance plot. -->
 
-```{r meanvar}
-meanVarPlot <- plotMeanVar(y, 
-                           show.raw.vars=TRUE, 
-                           show.tagwise.vars=TRUE,
-                           show.binned.common.disp.vars=FALSE,
-                           show.ave.raw.vars=FALSE, 
-                           NBline = TRUE , nbins = 100,
-                           pch = 16, 
-                           xlab ="Mean Expression (Log10 Scale)", 
-                           ylab = "Variance (Log10 Scale)" , 
-                           main = "Mean-Variance Plot" )
-```
+<!-- ```{r meanvar} -->
+<!-- meanVarPlot <- plotMeanVar(y,  -->
+<!--                            show.raw.vars=TRUE,  -->
+<!--                            show.tagwise.vars=TRUE, -->
+<!--                            show.binned.common.disp.vars=FALSE, -->
+<!--                            show.ave.raw.vars=FALSE,  -->
+<!--                            NBline = TRUE , nbins = 100, -->
+<!--                            pch = 16,  -->
+<!--                            xlab ="Mean Expression (Log10 Scale)",  -->
+<!--                            ylab = "Variance (Log10 Scale)" ,  -->
+<!--                            main = "Mean-Variance Plot" ) -->
+<!-- ``` -->
 
 To test for differential expression, we first fit a generalized linear model (GLM) and then test using the likelihood ratio test.
 
 ```{r edger3}
+
 fit <- glmFit(y, design)
 lrt <- glmLRT(fit, coef=2)
 topTags(lrt)
@@ -369,17 +390,61 @@ pos <- which(rownames(top) %in% c(FCup, FCdown))
 points(top[pos, "logFC"],
        -log10(top[pos, "PValue"]),
        pch=1, col=2)
+
 ```
 
 We can test contrasts in `edgeR` in the following way. Imagine we want to test the difference between FC and RT.
 
 ```{r contrasts_edger}
+
 colnames(design) <- c("Intercept", "FC", "RT", 
                       "W1", "W2", "W3", "W4", "W5")
 cont <- makeContrasts(FC - RT, levels = colnames(design))
 cont
 lrt <- glmLRT(fit, contrast = cont)
 topTags(lrt)
-top <- topTags(lrt, n = Inf)$table
+top2 <- topTags(lrt, n = Inf)$table
 hist(top$PValue)
+
 ```
+
+
+# A common list of genes
+
+At this point we could want to compare the `edgeR` and the `DESeq2` results in order to obtain a consensul list.
+
+```{r}
+
+source("R/venn2.R")
+
+sign.edger <- top[de,]
+res2_ruv.nna <- res2_ruv[!is.na(res2_ruv$padj ),]
+sign.des <- res2_ruv.nna[res2_ruv.nna$padj < 0.05,]
+int.genes <- Venn2de(x=rownames(sign.edger), y=rownames(as.data.frame(sign.des)), label1="edgeR", label2="RUV_Deseq")
+
+print(head(int.genes))
+
+```
+
+# Functional analysis
+
+A list of genes can be used to obtain a first biological insight by looking at some known annotation databases available online.
+By using the **gprofiler** package we can query some of these databases and looking at the cellular mechanisms mostly affected by the obtained gene list.
+
+```{r}
+library(gProfileR)
+
+go <- gprofiler(query=int.genes, organism="mmusculus", src_filter="GO")
+
+kegg <- gprofiler(query=int.genes, organism="mmusculus", src_filter="KEGG")
+
+print(head(go))
+print(head(kegg))
+```
+
+# Session Info
+```{r}
+sessionInfo()
+```
+
+
