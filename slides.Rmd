@@ -19,15 +19,14 @@ We will cover the two most popular packages, `DESeq2` and `edgeR`.
 
 I will also show you how to deal with unwanted variation using the `RUVSeq` package.
 
-Other normalizations are accessible with `EDASeq` and `edgeR` packages. 
 
 ## What we will not cover
 
-I will not talk about the preprocessing of RNA-seq data, i.e., what we do to obtain the gene-level read counts.
+We will not talk about the preprocessing of RNA-seq data, i.e., what we do to obtain the gene-level read counts.
 
 These steps are usually done with stand-alone software outside R.
 
-I will not talk about isoform-level analysis and alternative splicing.
+We will not talk about isoform-level analysis and alternative splicing.
 
 We will focus on gene-level differential expression.
 
@@ -58,7 +57,7 @@ We will focus on gene-level differential expression.
 ## From RNA to gene-level read counts
 
 \centering
-\includegraphics[width=\linewidth]{rna-seq.jpg}
+\includegraphics[width=\linewidth]{rna-seq1.png}
 
 ## From RNA to gene-level read counts
 

@@ -3,8 +3,7 @@ title: "An example of RNA-seq differential expression analysis"
 author: "Dario Righelli"
 date: "17/04/2018"
 output: 
-    BiocStyle::html_document:
-        code_folding: hide
+    BiocStyle::html_document
 editor_options: 
   chunk_output_type: console
 ---
@@ -225,7 +224,7 @@ summary(res2)
 To explore the results, we can use look at the MA-plot and the histogram of the p-values.
 
 ```{r}
-plotMA(res2, ylim=c(-5, 5))
+DESeq2::plotMA(dds, ylim=c(-5, 5))
 hist(res2$pvalue)
 ```
 
