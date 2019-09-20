@@ -34,6 +34,7 @@ library(DESeq2)
 library(RUVSeq)
 library(edgeR)
 library(NOISeq)
+library(kableExtra)
 ```
 
 # Preliminary fundamental steps
@@ -204,6 +205,8 @@ Let's explore the results.
 ```{r deseq2res}
 res <- results(dds)
 res
+resna <- res[!is.na(res$padj),]
+resna[resna$padj < 0.05,]
 ```
 
 Calling `results` without any arguments will extract the estimated log2 fold-changes and p-values for the last variable in the design formula. If there are more than 2 levels for this variable, `results` will extract the results table for a comparison of the last level over the first level.
@@ -304,10 +307,8 @@ Now that we checked that these factors account for the unwanted variation, we ca
 
 ```{r deseq2ruv}
 dds_ruv <- DESeqDataSetFromMatrix(countData = filtered_orig,
-                              colData = data.frame(Condition = x_orig, 
-                                                   Expt = substring(colnames(filtered_orig), 3),
-                                                   ruv$W),
-                              design = ~ Condition + W_1 + W_2 + W_3 + W_4 + W_5)
+colData = data.frame(Condition = x_orig, Expt = substring(colnames(filtered_orig), 3), ruv$W),
+design = ~ Condition + W_1 + W_2 + W_3 + W_4 + W_5)
 dds_ruv <- DESeq(dds_ruv)
 
 res2_ruv <- results(dds_ruv, contrast=c("Condition", "FC", "CC"))
@@ -436,6 +437,8 @@ library(gProfileR)
 go <- gprofiler(query=int.genes, organism="mmusculus", src_filter="GO")
 
 kegg <- gprofiler(query=int.genes, organism="mmusculus", src_filter="KEGG")
+print(colnames(go))
+print(colnames(kegg))
 
 print(head(go))
 print(head(kegg))
